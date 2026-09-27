@@ -31,8 +31,7 @@ def main() -> None:
         url = (f"https://pageviews.wmcloud.org/?project={lang}.wikipedia.org&platform=all-access&agent=user"
                f"&start={START}&end={END}&pages={title.replace(' ', '_')}")
         lines.append(f"| {lang}: {title} | {total:,} | {url} |")
-    out = Path(__file__).resolve().parent / "results" / "spot_check.md"
-    out.parent.mkdir(exist_ok=True)
+    out = Path(__file__).resolve().parent / "spot_check.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(out.read_text(encoding="utf-8"))
 

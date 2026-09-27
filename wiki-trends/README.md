@@ -62,14 +62,13 @@ How the AI-written code and output were checked:
    confidence level. Recorded fixtures cover the API client, cache, fetch, narrative check, one-page PDF and CLI.
 2. **Live consistency tests** (`uv run pytest -m live`): the sum of our daily views equals the API's own monthly
    figure; Wikidata sitelinks and edition totals return plausible real values.
-3. **Manual spot check**: `evals/results/spot_check.md` lists our totals with pageviews.wmcloud.org links for
+3. **Manual spot check**: `evals/spot_check.md` lists our totals with pageviews.wmcloud.org links for
    the same query, to compare by eye.
 4. **End-to-end evals on Claude Haiku 4.5**: `evals/run_evals.py` runs the brief's three example requests plus a
    follow-up, a thin-data wiki and an ambiguous topic through `claude -p`, then grades the artifacts
    deterministically (used the CLI, no hand-written API calls, valid basket, one-page PDF, check passes,
-   confidence stated and matching the analysis, limitations mentioned). Latest scorecard:
-   [`evals/results/LATEST.md`](evals/results/LATEST.md); what was changed between runs:
-   [`evals/results/CHANGELOG.md`](evals/results/CHANGELOG.md).
+   confidence stated and matching the analysis, limitations mentioned). Final scorecard and what was changed
+   between runs: [`evals/REPORT.md`](evals/REPORT.md). Raw run output goes to the git-ignored `evals/results/`.
 
 ## Limitations
 
