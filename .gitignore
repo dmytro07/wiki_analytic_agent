@@ -1,6 +1,8 @@
 # Analysis workspaces the skill creates in whatever directory it runs from (per-user output)
 wiki-trends-work/
 
+# Local notes, not part of the project
+docs/
 
 # Python
 __pycache__/
