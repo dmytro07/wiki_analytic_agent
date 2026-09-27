@@ -1,0 +1,23 @@
+# Analysis workspaces the skill creates in whatever directory it runs from (per-user output)
+wiki-trends-work/
+
+# Local notes, not part of the project
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Secrets and local config
+.env
+.claude/settings.local.json
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
