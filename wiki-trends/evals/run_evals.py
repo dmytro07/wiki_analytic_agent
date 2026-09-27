@@ -66,7 +66,7 @@ def scorecard(rows: list[tuple[dict, Transcript, list]], model: str, stamp: str)
              "|" + "---|" * (len(names) + 4)]
     for case, t, results in rows:
         by = {r.name: r for r in results}
-        cells = ["pass" if by[n].passed else "FAIL" if n in by else "–" for n in names]
+        cells = [("pass" if by[n].passed else "FAIL") if n in by else "–" for n in names]
         lines.append(f"| {case['id']} | " + " | ".join(cells)
                      + f" | {len(t.tool_calls)} | {t.duration_s:.0f} | {t.cost_usd:.3f} |")
     passed = sum(r.passed for _, _, rs in rows for r in rs)

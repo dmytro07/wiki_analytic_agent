@@ -69,3 +69,22 @@ def test_expect_reuse_needs_second_run(tmp_path):
     wd = finished_workdir(tmp_path)
     results = by_name(grade(parse_stream(stream([], "")), wd, {**CASE, "expect_reuse": True}))
     assert not results["reused_workspace"].passed
+
+
+def test_scorecard_handles_cases_with_different_checks():
+    from evals.checks import Result, Transcript
+    from evals.run_evals import scorecard
+
+    rows = [
+        ({"id": "a"}, Transcript(), [Result("used_cli", True)]),
+        ({"id": "b"}, Transcript(), [Result("used_cli", False, "0 bash calls"), Result("reused_workspace", True)]),
+    ]
+    card = scorecard(rows, "m", "stamp")
+    assert "| a | pass | – |" in card and "| b | FAIL | pass |" in card
+    assert "**2/3 checks passed.**" in card
+
+
+def test_limitation_phrasing_from_skill_md_counts(tmp_path):
+    wd = finished_workdir(tmp_path)
+    final = "Confidence: High. Pageviews show attention, not demand to pay."
+    assert by_name(grade(parse_stream(stream(["/s/scripts/wt run astro"], final)), wd, CASE))["mentions_limitations"].passed
