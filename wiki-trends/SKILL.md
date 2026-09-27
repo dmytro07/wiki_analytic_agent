@@ -12,6 +12,8 @@ The CLI does all data work. **Never write your own code to call Wikipedia/Wikida
 `WT` below means this skill's `scripts/wt`, called by full path, e.g. `/path/to/skills/wiki-trends/scripts/wt`.
 Run it from the user's project directory; workspaces go to `./wiki-trends-work/<slug>/`.
 The first call installs dependencies (about 30 s).
+**Run every `WT` command in the foreground with a long timeout (600000 ms).** Never run it in the background,
+never add `sleep`, and never end your turn while a command is still running.
 
 ## Workflow (do every step)
 
@@ -80,4 +82,5 @@ Add `--json` to any command for machine-readable output.
 - Always state confidence. Low confidence → say the result is uncertain and why.
 - Say that pageviews measure attention, not demand to pay, whenever you recommend something.
 - Ambiguous topic (e.g. "Mercury")? Pick the meaning that fits the user's context, say which one you used.
-- If a command prints `error: ...`, do what the message says.
+- If a command prints `error: ...`, do what the message says. After a rate-limit error, run the same
+  command again once (downloaded data is cached, so it resumes).

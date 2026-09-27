@@ -13,6 +13,7 @@ import requests
 AQS = "https://wikimedia.org/api/rest_v1/metrics/pageviews"
 WIKIDATA = "https://www.wikidata.org/w/api.php"
 RETRY_STATUSES = {429, 500, 502, 503, 504}
+FIRST_DELAY, MAX_DELAY = 2.0, 30.0  # seconds; 7 attempts wait ~90 s in total, enough for rate limits
 WIKIDATA_BATCH = 50
 
 Transport = Callable[[str, "dict | None", dict], "tuple[int, dict | None]"]
@@ -72,7 +73,7 @@ class WikiClient:
         transport: Transport | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
-        max_attempts: int = 5,
+        max_attempts: int = 7,
         min_interval: float = 0.02,  # ≤50 requests/second
     ):
         self.transport = transport or requests_transport
@@ -83,7 +84,7 @@ class WikiClient:
 
     def _get(self, url: str, params: dict | None = None) -> dict:
         headers = {"User-Agent": user_agent(), "Accept": "application/json"}
-        delay, last_error = 1.0, ""
+        delay, last_error = FIRST_DELAY, ""
         for attempt in range(1, self.max_attempts + 1):
             wait = self._last + self.min_interval - self.clock()
             if wait > 0:
@@ -104,10 +105,11 @@ class WikiClient:
                 last_error = f"HTTP {status}"
             if attempt < self.max_attempts:
                 self.sleep(delay)
-                delay *= 2
+                delay = min(delay * 2, MAX_DELAY)
         raise ApiError(
             f"gave up after {self.max_attempts} attempts on {url} ({last_error}); "
-            "the Wikimedia API may be down or rate-limiting, try again in a minute"
+            "the Wikimedia API may be down or rate-limiting; wait a minute and run the same command again "
+            "(data already downloaded is cached)"
         )
 
     # --- Wikidata -------------------------------------------------------------

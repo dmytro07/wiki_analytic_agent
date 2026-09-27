@@ -65,15 +65,23 @@ def test_user_agent_uses_contact(monkeypatch):
 def test_retries_then_succeeds():
     c, t, sleeps = make([(429, None), (503, None), requests.ConnectionError("boom"), (200, {"items": []})])
     assert c.edition_daily("pl", date(2024, 1, 1), date(2024, 1, 1)) == {}
-    assert sleeps == [1.0, 2.0, 4.0]
+    assert sleeps == [2.0, 4.0, 8.0]
     assert len(t.calls) == 4
 
 
-def test_gives_up_after_max_attempts():
-    c, t, _ = make([(503, None)] * 5)
-    with pytest.raises(ApiError, match="gave up after 5 attempts"):
+def test_rate_limit_backoff_waits_over_a_minute_before_giving_up():
+    c, t, sleeps = make([(429, None)] * 7)
+    with pytest.raises(ApiError, match=r"gave up after 7 attempts.*run the same command again"):
         c.edition_daily("pl", date(2024, 1, 1), date(2024, 1, 1))
-    assert len(t.calls) == 5
+    assert sleeps == [2.0, 4.0, 8.0, 16.0, 30.0, 30.0]
+    assert sum(sleeps) >= 60
+
+
+def test_gives_up_after_max_attempts():
+    c, t, _ = make([(503, None)] * 7)
+    with pytest.raises(ApiError, match="gave up after 7 attempts"):
+        c.edition_daily("pl", date(2024, 1, 1), date(2024, 1, 1))
+    assert len(t.calls) == 7
 
 
 def test_404_is_not_found_without_retry():
