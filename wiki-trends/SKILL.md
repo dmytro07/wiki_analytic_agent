@@ -61,7 +61,8 @@ never add `sleep`, and never end your turn while a command is still running.
 
 Reuse the same workspace. Edit `basket.json` (add languages or items, change `start`/`end` or `weights`)
 and run `WT run <slug>` again. Only missing data is downloaded and the output lists what changed.
-Then redo steps 4–8. A new topic gets a new workspace.
+Then redo steps 4–8 in full. Every reply, including follow-ups, must state the confidence level for each
+language (e.g. "Confidence: High") and one limitation, exactly as in step 8. A new topic gets a new workspace.
 
 ## Commands
 
