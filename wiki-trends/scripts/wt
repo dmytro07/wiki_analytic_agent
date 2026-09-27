@@ -1,0 +1,5 @@
+#!/bin/sh
+# Run the wiki-trends CLI from any directory; the caller's directory stays the working directory,
+# so workspaces are created where the user is working.
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec uv run --quiet --frozen --project "$SKILL_DIR" wiki-trends "$@"
