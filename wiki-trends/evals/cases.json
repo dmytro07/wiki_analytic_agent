@@ -1,0 +1,21 @@
+[
+  {"id": "fasting-pl-cs",
+   "turns": ["Compare the growth of interest in intermittent fasting on Polish and Czech Wikipedia over the last two years."],
+   "expect_langs": ["pl", "cs"]},
+  {"id": "astronomy-uk",
+   "turns": ["We're thinking of adding an astronomy course to our educational app. Is interest in this topic growing on Ukrainian Wikipedia, and how much can we trust that growth?"],
+   "expect_langs": ["uk"]},
+  {"id": "english-learning",
+   "turns": ["We're building a language-learning app. Compare interest in learning English across these language editions: Polish, Ukrainian, Spanish, Turkish, Vietnamese and Indonesian. Prepare a short report: which audiences should we research next, and why?"],
+   "expect_langs": ["pl", "uk", "es", "tr", "vi", "id"]},
+  {"id": "followup-astronomy",
+   "turns": ["Is interest in astronomy growing on Ukrainian Wikipedia?",
+             "Thanks. Now also add Polish and look at the last three years instead of two."],
+   "expect_langs": ["uk", "pl"], "expect_reuse": true},
+  {"id": "thin-data-scots",
+   "turns": ["Is interest in sourdough bread growing on Scots Wikipedia (sco)?"],
+   "expect_langs": ["sco"]},
+  {"id": "ambiguous-mercury",
+   "turns": ["Is interest in Mercury growing on German Wikipedia? Give me a short report."],
+   "expect_langs": ["de"], "must_mention_any": ["planet", "element", "god", "chemical"]}
+]
