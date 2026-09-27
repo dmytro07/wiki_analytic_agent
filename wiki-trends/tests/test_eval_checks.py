@@ -88,3 +88,12 @@ def test_limitation_phrasing_from_skill_md_counts(tmp_path):
     wd = finished_workdir(tmp_path)
     final = "Confidence: High. Pageviews show attention, not demand to pay."
     assert by_name(grade(parse_stream(stream(["/s/scripts/wt run astro"], final)), wd, CASE))["mentions_limitations"].passed
+
+
+def test_confidence_list_and_pay_phrasing_count(tmp_path):
+    wd = finished_workdir(tmp_path)
+    final = ("**Confidence levels:**\n- **High:** Ukrainian\n\nThe data reflects pageviews (attention), "
+             "not whether users would pay for an app.")
+    results = by_name(grade(parse_stream(stream(["/s/scripts/wt run astro"], final)), wd, CASE))
+    assert results["states_confidence"].passed and results["confidence_matches"].passed
+    assert results["mentions_limitations"].passed

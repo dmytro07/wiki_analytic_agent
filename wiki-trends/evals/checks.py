@@ -15,9 +15,9 @@ from wiki_trends.workspace import WORK_DIR_NAME, BasketError, load_basket, read_
 CLI_RE = re.compile(r"scripts/wt\b|\bwiki-trends\s+(init|resolve|fetch|analyze|chart|check|report|run)\b")
 OWN_FETCH_PATTERNS = ("wikimedia.org/api", "wikidata.org/w/api", "import requests", "urllib.request", "curl ")
 CONFIDENCE_RE = re.compile(
-    r"\b(high|medium|low)\b[^.\n]{0,25}\bconfidence\b|\bconfidence\b[^.\n]{0,25}\b(high|medium|low)\b", re.I)
+    r"\b(high|medium|low)\b[^.\n]{0,25}\bconfidence\b|\bconfidence\b[^.]{0,40}?\b(high|medium|low)\b", re.I)
 LIMITATION_RE = re.compile(
-    r"limitation|assumption|caveat|willingness to pay|demand to pay|purchase intent|attention, not|not (?:the same as|a proxy for)",
+    r"limitation|assumption|caveat|willingness to pay|demand to pay|would pay|purchase intent|attention, not|not (?:the same as|a proxy for)",
     re.I)
 
 
