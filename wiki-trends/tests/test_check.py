@@ -136,3 +136,34 @@ def test_check_workspace_records_result(tmp_path):
     assert status["passed"] is True
     assert status["narrative_sha"] == text_sha(GOOD)
     assert status["analysis_sha"] == file_sha(tmp_path / "analysis.json")
+
+
+def test_sign_inversion_is_rejected():
+    import copy
+    analysis = copy.deepcopy(ANALYSIS)
+    analysis["languages"]["pl"]["basket"].update(growth_norm_pct=-18.2, trend_pct_per_year=-15.1)
+    analysis["ranking"][0]["growth_norm_pct"] = -18.2
+    out = messages(GOOD, analysis)
+    assert any("'+18.2%'" in m for m in out)
+    assert any("Polish" in m and "fell" in m for m in out)
+
+
+def test_decline_described_as_decline_is_fine():
+    import copy
+    analysis = copy.deepcopy(ANALYSIS)
+    analysis["languages"]["pl"]["basket"].update(growth_norm_pct=-18.2, trend_pct_per_year=-15.1)
+    analysis["ranking"][0]["growth_norm_pct"] = -18.2
+    text = GOOD.replace("# Polish interest in intermittent fasting is growing; Czech is flat",
+                        "# Polish interest in intermittent fasting is declining; Czech is flat")
+    text = text.replace("- Polish: +18.2% share", "- Polish: -18.2% share, growth fell")
+    assert messages(text, analysis) == []
+
+
+def test_number_must_belong_to_the_named_language():
+    text = GOOD.replace("- Polish level is 41.3 views per million vs 12.0 for Czech.", "- Polish level is 12.0 views per million.")
+    assert any("'12.0'" in m for m in messages(text))
+
+
+def test_unit_suffix_numbers_are_rejected():
+    text = GOOD.replace("\n## Recommendation", "- Polish readers show 3x the Czech level.\n\n## Recommendation")
+    assert any("'3x'" in m for m in messages(text))

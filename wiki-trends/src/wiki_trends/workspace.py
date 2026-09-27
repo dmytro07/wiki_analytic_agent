@@ -181,6 +181,20 @@ def basket_hash(basket: Basket) -> str:
     return text_sha(json.dumps(basket.to_dict(), sort_keys=True, ensure_ascii=False))[:16]
 
 
+def stale_analysis_message(ws: Path, analysis: dict) -> str | None:
+    """Why analysis.json no longer matches basket.json, or None when it still does."""
+    recorded = analysis.get("provenance", {}).get("basket_hash")
+    if not recorded or not (ws / "basket.json").exists():
+        return None
+    try:
+        current = basket_hash(load_basket(ws))
+    except BasketError as exc:
+        return str(exc)
+    if current != recorded:
+        return f"basket.json changed since the last analysis; run: wt run {ws.name}"
+    return None
+
+
 # --- files ------------------------------------------------------------------
 
 

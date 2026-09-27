@@ -19,9 +19,14 @@
 - Headline ≤15 words. 3–5 findings as `- ` bullets. `## Recommendation` ≤80 words. Whole file ≤230 words.
 - Every number must exist in analysis.json. Rounding is allowed (18.2 → "18%"), inventing is not ("18.4%").
   Years, dates and small counts (≤24, like "3 articles") are ignored.
-  Do not compute differences, ratios or sums yourself. Monthly raw values are not citable.
+  A sign you write must match the data: "+18.2%" for a value of −18.2 fails.
+  A line that names a language may only cite that language's numbers (or the window/weights).
+  Do not compute differences, ratios, multipliers ("3x") or sums yourself, and do not use "k"/"M"/"pp".
+  Monthly raw values are not citable.
 - Growth words (growing, rising, increase, gain…) about a language whose trend is not significant
   (p ≥ 0.05) need a qualifier in the same clause: "not statistically significant", "no clear trend", "may".
+- Growth words about a language whose share fell 5% or more are rejected unless the clause says it fell
+  ("growth fell", "declining", a negative number).
 - If the recommendation covers a language with Low confidence (or it is the only language),
   it must contain a caveat: "low confidence", "tentative" or "uncertain".
 

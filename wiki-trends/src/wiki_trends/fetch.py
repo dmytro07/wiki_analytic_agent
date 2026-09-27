@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import csv
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .api import ApiError, NotFound, WikiClient, project_for
@@ -40,6 +40,11 @@ def ensure_series(client: WikiClient, cache: Cache, lang: str, key: str, start: 
         try:
             if key == TOTAL_KEY:
                 views = client.edition_daily(lang, a, b)
+                # An edition always has views, so trailing days absent from the answer are not published yet:
+                # cache only up to the last published day, and fetch the rest again next time.
+                if not views:
+                    continue
+                b = min(b, date.fromisoformat(max(views)))
             else:
                 views = client.article_daily(lang, key, a, b)
         except NotFound:
@@ -66,8 +71,14 @@ def fetch_workspace(ws: Path, client: WikiClient, cache: Cache, today: date, now
     rows = []
     for lang in basket.langs:
         totals = ensure_series(client, cache, lang, TOTAL_KEY, start, end)
+        published = date.fromisoformat(max(totals)) if totals else start - timedelta(days=1)
+        if published < month_end(basket.end):
+            last_full = shift_month(f"{published:%Y-%m}", 0 if published == month_end(f"{published:%Y-%m}") else -1)
+            raise BasketError(f"basket.json: {lang} pageviews are published only up to {published}; "
+                              f"set \"end\": \"{last_full}\" or try again tomorrow")
+        lang_end = min(end, published)
         for art in (a for a in resolved["articles"] if a["lang"] == lang):
-            series = ensure_series(client, cache, lang, art["title"], start, end)
+            series = ensure_series(client, cache, lang, art["title"], start, lang_end)
             for day, (views, missing) in sorted(series.items()):
                 rows.append([day, lang, art["qid"], art["title"], views, totals.get(day, (0, False))[0], int(missing)])
 
@@ -75,10 +86,11 @@ def fetch_workspace(ws: Path, client: WikiClient, cache: Cache, today: date, now
         writer = csv.writer(fh)
         writer.writerow(COLUMNS)
         writer.writerows(rows)
+    last_day = max((r[0] for r in rows), default=end.isoformat())
     meta = {
         "basket_hash": basket_hash(basket),
         "retrieved_at": now.isoformat(timespec="seconds"),
-        "range": [start.isoformat(), end.isoformat()],
+        "range": [start.isoformat(), last_day],
         "window": [basket.start, basket.end],
         "api_requests": client.requests_made - before,
         "rows": len(rows),

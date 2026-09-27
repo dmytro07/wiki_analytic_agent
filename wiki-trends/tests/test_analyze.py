@@ -126,3 +126,12 @@ def test_summary_lists_flagged_checks(tmp_path):
     lines = summarize(analyze_workspace(build_workspace(tmp_path, one_lang(arts))))
     assert any(line.strip().startswith("fail spike_dependence") for line in lines)
     assert "confidence Low" in lines[1]
+
+
+def test_ranking_uses_growth_and_level_magnitudes_not_just_order():
+    langs = {
+        "pl": {"basket": {"growth_norm_pct": -40.0, "level_norm": 50.0}, "confidence": "High"},
+        "cs": {"basket": {"growth_norm_pct": 35.0, "level_norm": 49.0}, "confidence": "Medium"},
+    }
+    ranking = rank_languages(langs, {"growth": 0.4, "level": 0.4, "confidence": 0.2})
+    assert ranking[0]["lang"] == "cs"

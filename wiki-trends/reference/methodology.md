@@ -41,9 +41,10 @@ Any `fail` → **Low**. Two or more `warn` → **Medium**. Otherwise **High**.
 
 ## Ranking (several languages)
 
-Score = w_growth × rank(growth) + w_level × rank(level) + w_confidence × (High 1, Medium 0.5, Low 0).
-Ranks are percentiles among the compared languages (best = 1). Default weights 0.4 / 0.4 / 0.2;
-set them in basket.json. The weights are printed with every score.
+Score = w_growth × G + w_level × L + w_confidence × (High 1, Medium 0.5, Low 0), where
+G = growth on an absolute scale (−50% or less → 0, 0% → 0.5, +50% or more → 1), so a declining language never
+earns growth credit just for declining least, and L = level ÷ the largest level among the compared languages.
+Default weights 0.4 / 0.4 / 0.2; set them in basket.json. The weights are printed with every score.
 
 ## Known limitations
 

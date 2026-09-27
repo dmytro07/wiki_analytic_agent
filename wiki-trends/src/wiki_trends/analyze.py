@@ -114,13 +114,18 @@ def analyze_language(lang: str, rows: pd.DataFrame, articles_meta: list[dict], g
     }
 
 
-def _pct_ranks(values: list[float | None]) -> list[float]:
-    """0 = worst, 1 = best; missing values rank lowest."""
-    n = len(values)
-    if n == 1:
-        return [1.0]
-    s = pd.Series([-math.inf if v is None else v for v in values], dtype=float)
-    return [float(x) for x in ((s.rank(method="average") - 1) / (n - 1))]
+GROWTH_SCALE_PCT = 50.0  # growth of -50% or less scores 0, +50% or more scores 1
+
+
+def _growth_scores(values: list[float | None]) -> list[float]:
+    """Growth on an absolute scale, so a decline never earns growth credit just by being the least bad."""
+    return [0.0 if v is None else min(1.0, max(0.0, (v + GROWTH_SCALE_PCT) / (2 * GROWTH_SCALE_PCT))) for v in values]
+
+
+def _level_scores(values: list[float | None]) -> list[float]:
+    """Level relative to the largest compared language (1 = largest), so near-equal levels score near-equally."""
+    top = max((v for v in values if v is not None), default=0.0)
+    return [0.0 if v is None or top <= 0 else v / top for v in values]
 
 
 def rank_languages(languages: dict, weights: dict) -> list[dict]:
@@ -129,7 +134,7 @@ def rank_languages(languages: dict, weights: dict) -> list[dict]:
         return []
     growth = [(languages[l]["basket"] or {}).get("growth_norm_pct") for l in langs]
     level = [(languages[l]["basket"] or {}).get("level_norm") for l in langs]
-    growth_rank, level_rank = _pct_ranks(growth), _pct_ranks(level)
+    growth_rank, level_rank = _growth_scores(growth), _level_scores(level)
     rows = []
     for i, lang in enumerate(langs):
         conf = languages[lang]["confidence"]

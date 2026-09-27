@@ -93,3 +93,22 @@ def test_fetch_rejects_incomplete_end_month(tmp_path):
     ws, client, cache = setup(tmp_path, fake(), start="2025-01", end="2025-09")
     with pytest.raises(BasketError, match="latest complete month is 2025-08"):
         fetch_workspace(ws, client, cache, TODAY, NOW)
+
+
+def test_unpublished_days_are_not_cached_as_zeros(tmp_path):
+    f = fake()
+    f.edition_views = lambda lang, d: 1_000_000 if d <= date(2024, 9, 28) else 0  # AQS omits unpublished days
+    ws, client, cache = setup(tmp_path, f)  # window 2024-01..2024-06, padded to 2024-09-30
+    meta = fetch_workspace(ws, client, cache, TODAY, NOW)
+    assert max(r["date"] for r in read_rows(ws)) == "2024-09-28"
+    assert meta["range"][1] == "2024-09-28"
+    assert cache.get("uk.wikipedia", "__total__", date(2024, 9, 29), date(2024, 9, 30)) == {}
+    assert cache.get("uk.wikipedia", "Астрономія", date(2024, 9, 29), date(2024, 9, 30)) == {}
+
+
+def test_window_end_not_yet_published_is_actionable(tmp_path):
+    f = fake()
+    f.edition_views = lambda lang, d: 1_000_000 if d <= date(2024, 6, 27) else 0
+    ws, client, cache = setup(tmp_path, f)
+    with pytest.raises(BasketError, match=r'published only up to 2024-06-27.*"end": "2024-05"'):
+        fetch_workspace(ws, client, cache, TODAY, NOW)

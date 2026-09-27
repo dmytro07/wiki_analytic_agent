@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .langs import language_name, mentions
-from .workspace import file_sha, read_json, text_sha, write_json
+from .workspace import file_sha, read_json, stale_analysis_message, text_sha, write_json
 
 HEADLINE_MAX_WORDS = 15
 FINDINGS_MIN, FINDINGS_MAX = 3, 5
@@ -26,6 +26,14 @@ GROWTH_RE = re.compile(r"\b(grow\w*|growth|ris(?:e|es|ing)|increas\w*|upward|sur
 NUMBER_RE = re.compile(
     r"(?<![\w.,\-−])(?P<sign>[-+−]?)(?P<int>\d{1,3}(?:,\d{3})+|\d+)(?P<frac>\.\d+)?(?P<pct>\s?%)?(?![\w-])"
 )
+FLAT_PCT = 5.0  # same threshold as metrics.FLAT_PCT
+COMMON_KEYS = ("window", "weights")  # numbers any sentence may cite
+# "3x", "1.5M", "10k", "12pp": multipliers and units that analysis.json never contains, so they cannot be verified.
+SUFFIX_NUMBER_RE = re.compile(r"(?<![\w.,])\d+(?:\.\d+)?\s?(?:x|×|k|K|M|pp)(?!\w)")
+# Words that show a growth word is used about a decline ("growth fell", "no growth"), so it is not a false claim.
+DECLINE_WORDS = ("not ", "no ", "n't", "declin", "fell", "fall", "drop", "decreas", "shrink", "down", "negative",
+                 "lower", "lost", "loss")
+NEGATIVE_NUMBER_RE = re.compile(r"[-−]\d")
 CLAUSE_SPLIT_RE = re.compile(r"[.;:!?](?:\s|$)|\bbut\b|\bwhile\b|\bwhereas\b|\bhowever\b", re.I)
 
 
@@ -84,7 +92,7 @@ def _known_numbers(obj, out: set[float] | None = None) -> set[float]:
     if isinstance(obj, bool):
         return out
     if isinstance(obj, (int, float)):
-        out.add(abs(float(obj)))
+        out.add(float(obj))
     elif isinstance(obj, dict):
         for key, value in obj.items():
             if key not in SKIP_KEYS:
@@ -95,8 +103,19 @@ def _known_numbers(obj, out: set[float] | None = None) -> set[float]:
     return out
 
 
+def _number_pools(analysis: dict) -> tuple[set[float], dict[str, set[float]]]:
+    """Numbers any sentence may cite, and numbers that belong to each language."""
+    common: set[float] = set()
+    for key in COMMON_KEYS:
+        _known_numbers(analysis.get(key), common)
+    per_lang = {lang: _known_numbers(d) for lang, d in analysis["languages"].items()}
+    for row in analysis.get("ranking", []):
+        _known_numbers(row, per_lang.setdefault(row["lang"], set()))
+    return common, per_lang
+
+
 def _unsupported_numbers(line: str, known: set[float]) -> list[str]:
-    bad = []
+    bad = [m.group(0).strip() for m in SUFFIX_NUMBER_RE.finditer(line)]
     for m in NUMBER_RE.finditer(line):
         frac = m.group("frac") or ""
         value = float(m.group("int").replace(",", "") + frac)
@@ -106,7 +125,13 @@ def _unsupported_numbers(line: str, known: set[float]) -> list[str]:
         if value in STANDARD_NUMBERS:
             continue
         tolerance = 0.5 * 10 ** (-(len(frac) - 1 if frac else 0)) + 1e-9
-        if not any(abs(value - k) <= tolerance for k in known):
+        sign = m.group("sign")
+        if sign:  # an explicit sign must match the sign in the data
+            target = -value if sign in "-−" else value
+            supported = any(abs(target - k) <= tolerance for k in known)
+        else:
+            supported = any(abs(value - abs(k)) <= tolerance for k in known)
+        if not supported:
             bad.append(m.group(0).strip())
     return bad
 
@@ -132,8 +157,11 @@ def check_narrative(text: str, analysis: dict) -> list[Issue]:
     if total > TOTAL_MAX_WORDS:
         issues.append(Issue(None, f"narrative has {total} words; max {TOTAL_MAX_WORDS} so the report fits one page"))
 
-    known = _known_numbers(analysis)
+    common, per_lang = _number_pools(analysis)
+    everything = common.union(*per_lang.values())
     for lineno, line in n.lines:
+        named = [lang for lang in langs if mentions(line, lang)]
+        known = common.union(*(per_lang[lang] for lang in named)) if named else everything
         for num in _unsupported_numbers(line, known):
             issues.append(Issue(lineno, f"number '{num}' is not in analysis.json; copy numbers exactly as the summary prints them"))
 
@@ -141,12 +169,26 @@ def check_narrative(text: str, analysis: dict) -> list[Issue]:
         lang for lang, d in langs.items()
         if d["basket"] is None or d["basket"]["trend_p"] is None or d["basket"]["trend_p"] >= SIGNIFICANCE
     }
+    falling = {
+        lang: d["basket"]["growth_norm_pct"] for lang, d in langs.items()
+        if d["basket"] and d["basket"]["growth_norm_pct"] is not None and d["basket"]["growth_norm_pct"] <= -FLAT_PCT
+    }
     for lineno, line in n.lines:
         for clause in CLAUSE_SPLIT_RE.split(line):
-            if not GROWTH_RE.search(clause) or any(q in clause.lower() for q in QUALIFIERS):
+            if not GROWTH_RE.search(clause):
                 continue
+            low = clause.lower()
             named = [lang for lang in langs if mentions(clause, lang)]
             targets = named or (list(langs) if len(langs) == 1 else [])
+            describes_decline = any(w in low for w in DECLINE_WORDS) or NEGATIVE_NUMBER_RE.search(clause)
+            fell = [lang for lang in targets if lang in falling]
+            if fell and not describes_decline:
+                issues.append(Issue(lineno, "claims growth for " + ", ".join(
+                    f"{language_name(l)} (share of views fell {falling[l]:.1f}%)" for l in fell)
+                    + "; describe it as a decline"))
+                continue
+            if any(q in low for q in QUALIFIERS):
+                continue
             bad = [lang for lang in targets if lang in not_significant]
             if bad:
                 issues.append(Issue(lineno, f"claims growth for {', '.join(language_name(l) for l in bad)} but the "
@@ -168,8 +210,12 @@ def check_workspace(ws: Path) -> list[Issue]:
         return [Issue(None, f"analysis.json not found; run: wt run {ws.name}")]
     if not narrative_path.exists():
         return [Issue(None, "narrative.md not found; write it following reference/report-guide.md")]
+    analysis = read_json(analysis_path)
+    stale = stale_analysis_message(ws, analysis)
+    if stale:
+        return [Issue(None, stale)]
     text = narrative_path.read_text(encoding="utf-8")
-    issues = check_narrative(text, read_json(analysis_path))
+    issues = check_narrative(text, analysis)
     write_json(ws / "check.json", {
         "passed": not issues,
         "narrative_sha": text_sha(text),
